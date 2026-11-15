@@ -1,9 +1,9 @@
 /**
  * BMW102 · G-xDrive — плитка в меню МГУ для отключения полного привода.
  *
- * Приложение само ничего не шлёт в шину (песочница OAP). По нажатию кнопки
- * оно стучится в root-демон bmw102-xdrive по unix-сокету, а демон отправляет
- * UDS-команду в раздатку (VTG 0x29) по HSFZ. Одна страница:
+ * Команды идут через собственный диагностический транспорт МГУ — TASU (SOME/IP
+ * InternalTasu), как у приложений idrive7-apps. Путь (DSC 0x29 или VIP 0x39)
+ * выбирается по индексу блока: src/xdrive.js. Одна страница:
  *   заголовок · статус · «Отключить xDrive» · «Проверить связь» · результат.
  * Жизненный цикл повторяет приложения Store (robertn_store, robertn_waze_cluster).
  * Каждый шаг старта уходит в журнал демона (journalctl -u bmw102-xdrive).
@@ -16,12 +16,15 @@ const OnlineApp = require('oap-sdk/src/core/OnlineApp.js');
 const logging = require('oap-sdk/src/logging/logging');
 const someipBuilders = require('oap-sdk/src/someip/someipBuilders');
 const { XDriveClient } = require('./client.js');
+const { Tasu } = require('./tasu.js');
+const { XDrive } = require('./xdrive.js');
 
 const logger = logging.getSDKLogger();
 
 const SOCKET = '/dev/shm/bmw102-xdrive/xdrive.sock';
 const RECONNECT_MS = 2000;
 const PRESS_DEDUPE_MS = 400;
+const CONFIRM_MS = 6000;
 const HIDE_SETTLE_MS = 400;
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const SECRET_FILE = path.join(DATA_DIR, 'app-secret');
@@ -31,10 +34,12 @@ const STATE_NAME = 'ST_OnlineApps_BMW102XDrive';
 const C = { title: 'xdTitle', status: 'xdStatus', disable: 'xdDisable', probe: 'xdProbe', result: 'xdResult' };
 
 const STR = {
-    ready: 'Готов. Нажмите «Отключить xDrive».',
-    offline: 'Сервис xDrive не запущен на МГУ.',
-    working: 'Выполняю… не выключайте зажигание.',
-    probing: 'Проверяю связь с раздаткой…',
+    ready: 'Готов. Зажигание ВКЛ, двигатель заглушен, P, ручник.',
+    noLink: 'Нет диагностического канала МГУ (TASU).',
+    linking: 'Подключаю диагностический канал МГУ…',
+    working: 'Отправляю… не выключайте зажигание.',
+    probing: 'Определяю блок DSC/VIP…',
+    confirm: 'Нажмите «Отключить xDrive» ещё раз в течение 6 с',
     hintG: 'Только G-кузов. Привод вернётся после перезапуска авто.',
     disable: 'Отключить xDrive',
     probe: 'Проверить связь'
@@ -60,26 +65,23 @@ class XDriveApp extends OnlineApp {
         this._xdState = null;           // последнее состояние демона
         this._xdNote = null;            // строка результата
         this._xdLog = [];               // журнал до подключения к демону
+        this._busy = false;
+        this._confirmUntil = 0;
+        this._tasu = new Tasu((m) => this._trace(m));
+        this._xdrive = new XDrive(this._tasu, (m) => this._trace(m));
+        this._tasu.on('available', () => this._render());
 
         this._xd = new XDriveClient(SOCKET, { reconnectMs: RECONNECT_MS, secret: this._readSecret() });
-        this._xd.on('state', (st) => {
+        // движок bmw102-xdrive здесь только принимает журнал (journalctl -u bmw102-xdrive)
+        this._xd.on('state', () => {
             const first = !this._xdLink;
             this._xdLink = true;
-            this._xdState = st;
             if (first) {
                 this._flushLog();
             }
-            this._render();
         });
-        this._xd.on('result', (r) => { this._xdNote = r; this._trace(`result ${r.code}: ${r.message}`); this._render(); });
-        this._xd.on('down', () => { this._xdLink = false; this._render(); });
-        this._xd.on('reply-error', (msg, op) => {
-            if (op === 'log') {
-                return;
-            }
-            this._xdNote = { ok: false, message: `Отказ сервиса: ${msg}` };
-            this._render();
-        });
+        this._xd.on('down', () => { this._xdLink = false; });
+        this._xd.on('reply-error', () => {});
 
         this.on('initialized', () => {
             this._appInitialized()
@@ -126,6 +128,7 @@ class XDriveApp extends OnlineApp {
     _appInitialized() {
         this._trace(`v${this._version()} starting, reason ${this.startReason}`);
         this._xd.connect();
+        this._linkTasu();
         if (!this.rhmiApplication) {
             this._trace('no RhmiApplication for this start reason; initializing without a screen');
             return this.initialized();
@@ -302,23 +305,50 @@ class XDriveApp extends OnlineApp {
             this._trace(`app status report failed: ${err && err.message}`, 'warn')));
     }
 
+    /* ---- диагностический канал ---- */
+    _linkTasu() {
+        if (this._tasu.p || this._tasuStarting) {
+            return this._tasuStarting || Promise.resolve();
+        }
+        this._tasuStarting = this._tasu.init()
+            .then(() => { this._tasuStarting = null; this._render(); })
+            .catch((e) => { this._tasuStarting = null; this._render(); throw e; });
+        return this._tasuStarting;
+    }
+
+    _run(job, startText) {
+        if (this._busy) {
+            return;
+        }
+        this._busy = true;
+        this._xdNote = { ok: null, message: startText };
+        this._render();
+        this._linkTasu()
+            .then(job)
+            .then((r) => { this._xdNote = r; this._trace(`result: ${r.ok ? 'OK' : 'FAIL'} ${r.message}`); })
+            .catch((e) => { this._xdNote = { ok: false, message: `${STR.noLink} ${e && e.message || e}` }; this._trace(`run failed: ${e && e.stack || e}`, 'warn'); })
+            .then(() => { this._busy = false; this._render(); });
+    }
+
     /* ---- действия ---- */
     _doDisable() {
-        this._xdNote = { ok: null, message: STR.working };
-        this._render();
-        if (!this._xd.disable()) {
-            this._xdNote = { ok: false, message: STR.offline };
-            this._render();
+        if (this._busy) {
+            return;
         }
+        const now = Date.now();
+        if (now > this._confirmUntil) {
+            this._confirmUntil = now + CONFIRM_MS;
+            this._xdNote = { ok: null, message: STR.confirm };
+            this._render();
+            return;
+        }
+        this._confirmUntil = 0;
+        this._run(() => this._xdrive.disable(), STR.working);
     }
 
     _doProbe() {
-        this._xdNote = { ok: null, message: STR.probing };
-        this._render();
-        if (!this._xd.probe()) {
-            this._xdNote = { ok: false, message: STR.offline };
-            this._render();
-        }
+        this._confirmUntil = 0;
+        this._run(() => this._xdrive.identify(), STR.probing);
     }
 
     /* ---- вывод ---- */
@@ -337,10 +367,12 @@ class XDriveApp extends OnlineApp {
             return;
         }
         let status = STR.ready;
-        if (!this._xdLink) {
-            status = STR.offline;
-        } else if (this._xdState && this._xdState.busy) {
+        if (this._busy) {
             status = STR.working;
+        } else if (this._tasuStarting) {
+            status = STR.linking;
+        } else if (!this._tasu.p) {
+            status = STR.noLink + (this._tasu.error ? ' ' + this._tasu.error : '');
         }
         this._write(C.status, status);
         this._write(C.disable, STR.disable);
