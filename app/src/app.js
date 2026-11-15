@@ -2,9 +2,11 @@
  * BMW102 · G-xDrive — плитка в меню МГУ для отключения полного привода.
  *
  * Приложение само ничего не шлёт в шину (песочница OAP). По нажатию кнопки
- * оно стучится в root-демон (engine/daemon.py) по unix-сокету, а демон
- * отправляет UDS-команду в раздатку (VTG 0x29) по HSFZ. Одна страница:
- *   заголовок · строка статуса · «Отключить xDrive» · «Проверить связь» · результат.
+ * оно стучится в root-демон bmw102-xdrive по unix-сокету, а демон отправляет
+ * UDS-команду в раздатку (VTG 0x29) по HSFZ. Одна страница:
+ *   заголовок · статус · «Отключить xDrive» · «Проверить связь» · результат.
+ * Жизненный цикл повторяет приложения Store (robertn_store, robertn_waze_cluster).
+ * Каждый шаг старта уходит в журнал демона (journalctl -u bmw102-xdrive).
  * Только G-кузов.
  */
 'use strict';
@@ -19,206 +21,353 @@ const logger = logging.getSDKLogger();
 
 const SOCKET = '/dev/shm/bmw102-xdrive/xdrive.sock';
 const RECONNECT_MS = 2000;
-// Секрет (если демон запущен с --require-secret) кладётся установщиком
-// в data-папку приложения; читается при каждом использовании.
+const PRESS_DEDUPE_MS = 400;
+const HIDE_SETTLE_MS = 400;
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const SECRET_FILE = path.join(DATA_DIR, 'app-secret');
 
-// Имя state и компонентов — должны совпадать с rhmiData/uiDescription.
-const STATE = 'ST_BMW102_XDrive';
+// Имена — как в rhmiData/uiDescription.
+const STATE_NAME = 'ST_OnlineApps_BMW102XDrive';
 const C = { title: 'xdTitle', status: 'xdStatus', disable: 'xdDisable', probe: 'xdProbe', result: 'xdResult' };
 
-// Крошечный i18n: ru по умолчанию, en как запасной.
 const STR = {
-    ru: {
-        ready: 'Готов. Нажмите «Отключить xDrive».',
-        connecting: 'Подключение к сервису…',
-        offline: 'Сервис xDrive не запущен на МГУ.',
-        working: 'Выполняю… не выключайте зажигание.',
-        probing: 'Проверяю связь с раздаткой…',
-        hintG: 'Только G-кузов. Привод вернётся после перезапуска авто.',
-        disable: 'Отключить xDrive',
-        probe: 'Проверить связь',
-    },
-    en: {
-        ready: 'Ready. Press “Disable xDrive”.',
-        connecting: 'Connecting to service…',
-        offline: 'xDrive service is not running on the head unit.',
-        working: 'Working… keep the ignition on.',
-        probing: 'Checking link to transfer box…',
-        hintG: 'G-chassis only. AWD returns after a car restart.',
-        disable: 'Disable xDrive',
-        probe: 'Check link',
-    },
+    ready: 'Готов. Нажмите «Отключить xDrive».',
+    offline: 'Сервис xDrive не запущен на МГУ.',
+    working: 'Выполняю… не выключайте зажигание.',
+    probing: 'Проверяю связь с раздаткой…',
+    hintG: 'Только G-кузов. Привод вернётся после перезапуска авто.',
+    disable: 'Отключить xDrive',
+    probe: 'Проверить связь'
 };
+
+function isTrue(raw) {
+    return raw === true || raw === 'true' || raw === 1 || raw === '1';
+}
 
 class XDriveApp extends OnlineApp {
     constructor() {
         super();
-        this._states = {};
+        this._state = null;             // RHMI state страницы
         this._components = {};
         this._actionById = {};
         this._lastPress = {};
         this._written = {};
         this._visible = false;
-        this._shutdown = false;
-        this._lang = 'ru';
-        this._entryUuid = null;
-        this._connected = false;
-        this._state = null;         // последнее состояние демона
-        this._note = null;          // текущая строка результата (перекрывает статус)
+        this._sawForeground = false;
+        this._hideTimer = null;
+        this._shutdownPromise = null;
+        this._xdLink = false;           // демон на связи
+        this._xdState = null;           // последнее состояние демона
+        this._xdNote = null;            // строка результата
+        this._xdLog = [];               // журнал до подключения к демону
 
-        this._client = new XDriveClient(SOCKET, { reconnectMs: RECONNECT_MS, secret: this._readSecret() });
-        this._client.on('state', (st) => { this._connected = true; this._state = st; this._render(); });
-        this._client.on('result', (r) => { this._note = r; this._render(); });
-        this._client.on('down', () => { this._connected = false; this._render(); });
-        this._client.on('reply-error', (msg, op) => {
-            this._note = { ok: false, message: (op === 'disable' ? 'Отказ: ' : '') + String(msg) };
+        this._xd = new XDriveClient(SOCKET, { reconnectMs: RECONNECT_MS, secret: this._readSecret() });
+        this._xd.on('state', (st) => {
+            const first = !this._xdLink;
+            this._xdLink = true;
+            this._xdState = st;
+            if (first) {
+                this._flushLog();
+            }
+            this._render();
+        });
+        this._xd.on('result', (r) => { this._xdNote = r; this._trace(`result ${r.code}: ${r.message}`); this._render(); });
+        this._xd.on('down', () => { this._xdLink = false; this._render(); });
+        this._xd.on('reply-error', (msg, op) => {
+            if (op === 'log') {
+                return;
+            }
+            this._xdNote = { ok: false, message: `Отказ сервиса: ${msg}` };
             this._render();
         });
 
-        this.on('initialized', () => this._boot().catch((e) => logger.error('init: ' + (e && e.message))));
-        this.on('shutdown', () => { this._shutdown = true; try { this._client.close(); } catch (e) {} });
-        this.on('error', (err) => logger.warn('OnlineApp error: ' + (err && err.message)));
-        this.on('entryPointExecute', (uuid) => this._openEntry(uuid));
-        this.on('changeVisibility', (d) => { if (d && d.visible === false) this._setVisible(false); });
+        this.on('initialized', () => {
+            this._appInitialized()
+                .catch((err) => this._trace(`init failed: ${err && err.stack || err}`, 'error'));
+        });
+        this.on('shutdown', (reason) => this._handleShutdown(reason));
+        this.on('error', (err) => this._trace(`OnlineApp error: ${err && err.message}`, 'warn'));
+        this.on('entryPointExecute', (uuid) => this._onEntryPointExecute(uuid));
+        this.on('changeVisibility', (data) => {
+            if (data && data.visible === false) {
+                this._setVisible(false);
+            }
+        });
+        this._trace('constructed');
     }
 
-    t(key) { return (STR[this._lang] && STR[this._lang][key]) || STR.en[key] || key; }
+    /* Журнал: в логгер SDK и в журнал демона (видно в journalctl -u bmw102-xdrive). */
+    _trace(text, level) {
+        const line = String(text);
+        try {
+            (logger[level || 'info'] || logger.info).call(logger, `bmw102_xdrive: ${line}`);
+        } catch (e) { /* логгер недоступен */ }
+        if (!this._xd || !this._xdLink || !this._xd.send({ op: 'log', msg: line })) {
+            if (this._xdLog && this._xdLog.length < 100) {
+                this._xdLog.push(line);
+            }
+        }
+    }
+
+    _flushLog() {
+        const lines = this._xdLog.splice(0);
+        lines.forEach((l) => this._xd.send({ op: 'log', msg: l }));
+    }
 
     _readSecret() {
         try { return fs.readFileSync(SECRET_FILE, 'utf8').trim() || null; } catch (e) { return null; }
     }
 
-    _version() { const pkg = this._packageJson || this.packageJson; return pkg && pkg.version; }
+    _version() {
+        const pkg = this._packageJson || this.packageJson;
+        return pkg && pkg.version;
+    }
 
-    _boot() {
-        logger.info('BMW102 xDrive ' + this.getAppId() + ' v' + this._version() + ' starting');
-        this._client.connect();
-        if (!this.rhmiApplication) { return this.initialized(); }
-        const fg = this._startedForeground();
+    _appInitialized() {
+        this._trace(`v${this._version()} starting, reason ${this.startReason}`);
+        this._xd.connect();
+        if (!this.rhmiApplication) {
+            this._trace('no RhmiApplication for this start reason; initializing without a screen');
+            return this.initialized();
+        }
+        const foregroundStart = this._startedForeground();
         return this._setupRhmi()
             .then(() => this._registerEntryPoints())
-            .then(() => { if (fg) this.registerActive(); return this.initialized(); })
             .then(() => {
-                if (fg) this._setVisible(true);
-                const last = this.getLastExecutedEntryPointUuid && this.getLastExecutedEntryPointUuid();
-                return last ? this._openEntry(last) : undefined;
+                // Старт с плитки объявляет себя ACTIVE до initialized(), чтобы менеджер не остановил приложение.
+                if (foregroundStart) {
+                    this.registerActive();
+                }
+                return this.initialized();
+            })
+            .then(() => {
+                this._trace(`initialized (foreground ${foregroundStart})`);
+                if (foregroundStart) {
+                    this._sawForeground = true;
+                    this._setVisible(true);
+                }
+                const lastUuid = this.getLastExecutedEntryPointUuid && this.getLastExecutedEntryPointUuid();
+                return lastUuid ? this._onEntryPointExecute(lastUuid) : undefined;
             });
     }
 
     _startedForeground() {
-        const F = ['ENTRY_POINT', 'LUM', 'BOOKMARK', 'START_WIDGET', 'TRIGGER_HMI', 'SPEECH_COMMAND'];
+        const FOREGROUND_REASONS = ['ENTRY_POINT', 'LUM', 'BOOKMARK', 'START_WIDGET', 'TRIGGER_HMI', 'SPEECH_COMMAND'];
         const data = this.getVisibilityData && this.getVisibilityData();
-        return F.includes((data && data.reason) || this.startReason);
+        const reason = (data && data.reason) || this.startReason;
+        return FOREGROUND_REASONS.includes(reason);
     }
 
+    /* ---- RHMI ---- */
     _setupRhmi() {
         const rhmi = this.rhmiApplication;
-        this._states[STATE] = rhmi.getByName(STATE);
-        if (!this._states[STATE]) return Promise.reject(new Error('uiDescription has no ' + STATE));
-        this._state = this._states[STATE];
-        Object.values(C).forEach((name) => {
+        this._state = rhmi.getByName(STATE_NAME);
+        if (!this._state) {
+            return Promise.reject(new Error(`uiDescription has no ${STATE_NAME}`));
+        }
+        Object.keys(C).forEach((k) => {
+            const name = C[k];
             this._components[name] = rhmi.getByName(name);
-            if (!this._components[name]) logger.warn('BIND MISS: ' + name);
+            if (!this._components[name]) {
+                this._trace(`BIND MISS: ${name}`, 'warn');
+            }
         });
         this._bind(C.disable, () => this._doDisable());
         this._bind(C.probe, () => this._doProbe());
-
+        // Нажатия приходят и как сырой 'userEvent'; оба пути ведут в _press.
         rhmi.on('userEvent', (ev) => {
             const entry = ev && ev.eventType === 'ACTION' && this._actionById[Number(ev.sourceId)];
-            if (entry) this._press(entry.name, entry.handler);
+            if (entry) {
+                this._press(entry.name, entry.handler);
+            }
         });
-        this._states[STATE].on('visible', (ev) => {
-            const vis = !!(ev && ev.visible);
-            this._visible = vis;
-            if (vis) { this._render(); this._client.status(); }
+        rhmi.on('applicationStackChanged', (stack) => {
+            const keys = stack && typeof stack === 'object' ? Object.keys(stack) : [];
+            if (!keys.length) {
+                return;
+            }
+            if (Object.prototype.hasOwnProperty.call(stack, 'ROOT_APP')) {
+                this._sawForeground = true;
+                this._setVisible(true);
+            } else if (this._sawForeground) {
+                this._setVisible(false);
+            }
         });
-        return Promise.resolve(this._states[STATE].updateResources());
+        rhmi.on('restoreHmi', () => {
+            this._written = {};
+            this._render();
+        });
+        this._state.on('visible', (event) => this._pageVisible(isTrue(event && event.visible)));
+        return Promise.resolve(this._state.updateResources()).then(() => {
+            this._trace('page ready');
+            this._render();
+        });
     }
-
-    _registerEntryPoints() {
-        const descriptions = (this.appDescription && this.appDescription.application.entryPoints) || [];
-        const ours = this.getEntryPoints().find((ep) => descriptions.some((d) => d.uuid === ep.getDescription().uuid));
-        if (!ours) return Promise.reject(new Error('no entry point handed over by the manager'));
-        const d = ours.getDescription();
-        return ours.init()
-            .then(() => this.rhmiApplication.mapEntryState(d.uuid, this._states[STATE]))
-            .then(() => { this._entryUuid = d.uuid; })
-            .then(() => ours.setAvailability('ENABLED'))
-            .then(() => logger.info('entry point ' + d.name + ' ENABLED'));
-    }
-
-    _openEntry(uuid) {
-        if (this._shutdown || !this.rhmiApplication || !uuid) return Promise.resolve();
-        this._setVisible(true);
-        return Promise.resolve(this.rhmiApplication.openEntryState(uuid))
-            .catch((e) => logger.warn('openEntryState: ' + (e && e.message)));
-    }
-
-    _setVisible(v) { this._visible = v; if (v) this._render(); }
 
     _bind(name, handler) {
         const comp = this._components[name];
-        if (!comp) return;
+        if (!comp) {
+            return;
+        }
         let id = null;
-        try { id = comp.getId(); } catch (e) { id = null; }
-        if (id !== null) this._actionById[Number(id)] = { name, handler };
+        try {
+            id = comp.getId();
+        } catch (e) {
+            id = null;
+        }
+        if (id !== null) {
+            this._actionById[Number(id)] = { name, handler };
+        }
         comp.on('action', () => this._press(name, handler));
     }
 
     _press(name, handler) {
         const now = Date.now();
-        if (now - (this._lastPress[name] || 0) < 400) return;
+        if (now - (this._lastPress[name] || 0) < PRESS_DEDUPE_MS) {
+            return;
+        }
         this._lastPress[name] = now;
-        logger.info('BUTTON ' + name);
-        try { handler(); } catch (e) { logger.warn(name + ': ' + (e && e.message)); }
+        this._trace(`BUTTON ${name}`);
+        try {
+            handler();
+        } catch (err) {
+            this._trace(`${name} failed: ${err && err.message}`, 'warn');
+        }
     }
 
+    /* Плитка из application.json приходит от менеджера; SDK шлёт 'entryPointExecute' на нажатие. */
+    _registerEntryPoints() {
+        const descriptions = (this.appDescription && this.appDescription.application.entryPoints) || [];
+        const ours = this.getEntryPoints().find(
+            (ep) => descriptions.some((d) => d.uuid === ep.getDescription().uuid));
+        if (!ours) {
+            return Promise.reject(new Error('no entry point handed over by the manager'));
+        }
+        const description = ours.getDescription();
+        return ours.init()
+            .then(() => this.rhmiApplication.mapEntryState(description.uuid, this._state))
+            .then(() => ours.setAvailability('ENABLED'))
+            .then(() => this._trace(`entry point ${description.name} ENABLED`));
+    }
+
+    _onEntryPointExecute(uuid) {
+        if (this._shutdownPromise || !this.rhmiApplication || !uuid) {
+            return Promise.resolve();
+        }
+        this._trace('tile pressed');
+        this._sawForeground = true;
+        this._setVisible(true);
+        return Promise.resolve(this.rhmiApplication.openEntryState(uuid))
+            .catch((err) => this._trace(`openEntryState failed: ${err && err.message}`, 'warn'));
+    }
+
+    /* ---- видимость ---- */
+    _pageVisible(visible) {
+        if (this._shutdownPromise) {
+            return;
+        }
+        clearTimeout(this._hideTimer);
+        this._hideTimer = null;
+        if (visible) {
+            this._sawForeground = true;
+            this._setVisible(true);
+            this._xd.status();
+        } else {
+            this._hideTimer = setTimeout(() => {
+                this._hideTimer = null;
+                this._setVisible(false);
+            }, HIDE_SETTLE_MS);
+        }
+    }
+
+    _setVisible(visible) {
+        if (this._shutdownPromise || this._visible === visible) {
+            return;
+        }
+        this._visible = visible;
+        this._reportVisibilityStatus(visible);
+        if (visible) {
+            this._render();
+        }
+    }
+
+    _reportVisibilityStatus(visible) {
+        if (!this._initialized || !this._appStatusService) {
+            return;
+        }
+        const reports = visible ?
+            [this.registerActive(), this.registerHmiVisible()] :
+            [this.unregisterHmiVisible(), this.registerInactive()];
+        reports.forEach((report) => Promise.resolve(report).catch((err) =>
+            this._trace(`app status report failed: ${err && err.message}`, 'warn')));
+    }
+
+    /* ---- действия ---- */
     _doDisable() {
-        this._note = { ok: null, message: this.t('working') };
+        this._xdNote = { ok: null, message: STR.working };
         this._render();
-        if (!this._client.disable()) {
-            this._note = { ok: false, message: this.t('offline') };
+        if (!this._xd.disable()) {
+            this._xdNote = { ok: false, message: STR.offline };
             this._render();
         }
     }
 
     _doProbe() {
-        this._note = { ok: null, message: this.t('probing') };
+        this._xdNote = { ok: null, message: STR.probing };
         this._render();
-        if (!this._client.probe()) {
-            this._note = { ok: false, message: this.t('offline') };
+        if (!this._xd.probe()) {
+            this._xdNote = { ok: false, message: STR.offline };
             this._render();
         }
     }
 
     /* ---- вывод ---- */
-    _set(name, cell, value, type) {
+    _write(name, text) {
         const comp = this._components[name];
-        const key = name + '.' + cell;
-        if (!comp || this._written[key] === value) return;
-        this._written[key] = value;
-        Promise.resolve(comp.setValue(0, cell, value, type))
-            .catch((e) => logger.warn('set ' + key + ': ' + (e && e.message)));
-    }
-
-    _statusText() {
-        if (!this._connected) return this.t('offline');
-        if (this._state && this._state.busy) return this.t('working');
-        return this.t('ready');
+        if (!comp || this._written[name] === text) {
+            return;
+        }
+        this._written[name] = text;
+        Promise.resolve(comp.setValue(0, 'Text', text, 'Text'))
+            .catch((err) => this._trace(`write ${name} failed: ${err && err.message}`, 'warn'));
     }
 
     _render() {
-        if (!this._visible || this._shutdown) return;
-        this._set(C.status, 'Text', this._statusText(), 'Text');
-        this._set(C.disable, 'Text', this.t('disable'), 'Text');
-        this._set(C.probe, 'Text', this.t('probe'), 'Text');
-        const note = this._note;
-        const mark = note ? (note.ok === true ? '✓  ' : note.ok === false ? '✗  ' : '·  ') : '';
-        this._set(C.result, 'Text', note ? (mark + note.message) : this.t('hintG'), 'Text');
+        if (!this._visible || this._shutdownPromise || !this._state) {
+            return;
+        }
+        let status = STR.ready;
+        if (!this._xdLink) {
+            status = STR.offline;
+        } else if (this._xdState && this._xdState.busy) {
+            status = STR.working;
+        }
+        this._write(C.status, status);
+        this._write(C.disable, STR.disable);
+        this._write(C.probe, STR.probe);
+        const n = this._xdNote;
+        const mark = n ? (n.ok === true ? '✓  ' : n.ok === false ? '✗  ' : '·  ') : '';
+        this._write(C.result, n ? mark + n.message : STR.hintG);
+    }
+
+    /* ---- остановка ---- */
+    _handleShutdown(reason) {
+        if (this._shutdownPromise) {
+            return this._shutdownPromise;
+        }
+        this._trace(`shutdown ${reason || ''}`);
+        clearTimeout(this._hideTimer);
+        try { this._xd.close(); } catch (e) { /* уже закрыт */ }
+        this._shutdownPromise = Promise.resolve()
+            .then(() => this.destroyBundles().catch((err) =>
+                logger.info(`destroyBundles: ${err && err.message}`)))
+            .then(() => process.exit(0));
+        return this._shutdownPromise;
     }
 }
 
 const app = new XDriveApp();
-app.start().catch((err) => logger.error('start failed: ' + (err && err.message)));
+app.start().catch((err) => {
+    /* Остаётся в памяти, чтобы менеджер мог его остановить или перезапустить. */
+    logger.error(`bmw102_xdrive failed to start: ${err && err.message}`);
+});

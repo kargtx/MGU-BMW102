@@ -1,7 +1,7 @@
 {
   "id": "bmw102-xdrive",
   "kind": "tool",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "title": "G-xDrive (движок)",
   "description": "Root-сервис: по запросу плитки отправляет UDS-команду отключения полного привода в раздатку (VTG 0x29) по HSFZ. Только G-кузов.",
   "requires": {

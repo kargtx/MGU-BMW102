@@ -168,6 +168,10 @@ class Daemon:
         op = req.get('op')
         if op == 'status':
             return self._reply(conn, self.state())
+        if op == 'log':
+            # журнал плитки: в systemd-журнал этого сервиса (journalctl -u bmw102-xdrive)
+            self.log('[app] %s' % str(req.get('msg', ''))[:500])
+            return None
         if op == 'probe':
             res = self.op_probe()
             return self._reply(conn, dict({'type': 'result'}, **res.to_dict()))

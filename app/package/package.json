@@ -1,6 +1,6 @@
 {
   "name": "bmw102_xdrive",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "BMW102 G-xDrive: плитка отключения полного привода (G-кузов) — МГУ шлёт UDS в раздатку по HSFZ, без адаптера",
   "private": false,
   "main": "javascript/runner.js",

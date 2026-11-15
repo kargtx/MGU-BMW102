@@ -7,9 +7,14 @@
       "path": "engine",
       "title": "G-xDrive · движок",
       "description": "Root-сервис МГУ: шлёт в раздатку (VTG 0x29) команду отключения полного привода по HSFZ. Ставится вместе с плиткой.",
-      "requires": { "mgu-python": "1.0.2" },
+      "requires": {
+        "mgu-python": "1.0.2"
+      },
       "uninstallable": true,
-      "mguHmi": ["ID7", "ID8"]
+      "mguHmi": [
+        "ID7",
+        "ID8"
+      ]
     },
     {
       "id": "bmw102_xdrive",
@@ -18,9 +23,14 @@
       "build": "unit",
       "title": "BMW102 · Отключение xDrive",
       "description": "Плитка в меню: одна кнопка отключает полный привод (100% задний) на G-кузове. Привод возвращается после перезапуска авто.",
-      "requires": { "bmw102-xdrive": "0.1.0" },
+      "requires": {
+        "bmw102-xdrive": "0.1.1"
+      },
       "uninstallable": true,
-      "mguHmi": ["ID7", "ID8"]
+      "mguHmi": [
+        "ID7",
+        "ID8"
+      ]
     }
   ]
 }

@@ -3,7 +3,7 @@
   "containers": {
     "1": {
       "type": "state",
-      "name": "ST_BMW102_XDrive",
+      "name": "ST_OnlineApps_BMW102XDrive",
       "components": {
         "10": {
           "type": "title",
