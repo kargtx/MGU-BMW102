@@ -1,10 +1,7 @@
 {
   "name": "bmw102_xdrive",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "lockfileVersion": 1,
-  "dependencies": {
-    "oap-sdk": {
-      "version": "24.10.2"
-    }
-  }
+  "requires": true,
+  "dependencies": {}
 }
