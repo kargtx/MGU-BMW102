@@ -1,0 +1,3 @@
+BMW102 G-xDrive
+GPL-3.0-or-later. Переиспользует hsfz.py из idrive7-8-ssh-root.
+oap-sdk линкуется из донора на устройстве и не входит в исходники.

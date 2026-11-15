@@ -1,0 +1,63 @@
+{
+  "id": "bmw102-xdrive",
+  "kind": "tool",
+  "version": "0.1.0",
+  "title": "G-xDrive (движок)",
+  "description": "Root-сервис: по запросу плитки отправляет UDS-команду отключения полного привода в раздатку (VTG 0x29) по HSFZ. Только G-кузов.",
+  "requires": {
+    "mgu-python": "1.0.2"
+  },
+  "files": [
+    {
+      "path": "engine/__init__.py",
+      "from": "__init__.py",
+      "mode": "0644"
+    },
+    {
+      "path": "engine/hsfz.py",
+      "from": "hsfz.py",
+      "mode": "0644"
+    },
+    {
+      "path": "engine/xdrive.py",
+      "from": "xdrive.py",
+      "mode": "0644"
+    },
+    {
+      "path": "engine/daemon.py",
+      "from": "daemon.py",
+      "mode": "0644"
+    },
+    {
+      "path": "engine/cli.py",
+      "from": "cli.py",
+      "mode": "0644"
+    },
+    {
+      "path": "engine/__main__.py",
+      "from": "__main__.py",
+      "mode": "0644"
+    },
+    {
+      "path": "run_daemon.py",
+      "from": "run_daemon.py",
+      "mode": "0644"
+    }
+  ],
+  "units": [
+    {
+      "name": "bmw102-xdrive.service",
+      "from": "systemd/bmw102-xdrive.service"
+    }
+  ],
+  "enable": [
+    {
+      "unit": "bmw102-xdrive.service",
+      "target": "multi-user.target"
+    }
+  ],
+  "recmgr": [],
+  "restart": [
+    "bmw102-xdrive.service"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "bmw102_xdrive",
+  "version": "0.1.0",
+  "tree": "package",
+  "modules": [
+    "src/app.js",
+    "lib/client.js"
+  ],
+  "sdk": [
+    "oap-sdk/src/core/OnlineApp.js",
+    "oap-sdk/src/logging/logging",
+    "oap-sdk/src/someip/someipBuilders"
+  ]
+}

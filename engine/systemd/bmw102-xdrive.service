@@ -1,0 +1,14 @@
+[Unit]
+Description=BMW102 G-xDrive: демон отключения полного привода (МГУ -> VTG по HSFZ)
+RequiresMountsFor=/var/opt
+After=local-fs.target network.target
+
+[Service]
+ExecStart=/var/opt/mgu-python/current/bin/python3 /var/opt/bmw102-xdrive/current/run_daemon.py
+Restart=always
+RestartSec=5
+Nice=5
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

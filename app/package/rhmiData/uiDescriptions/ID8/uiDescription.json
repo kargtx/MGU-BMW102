@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.3.0",
+  "containers": {
+    "1": {
+      "type": "state",
+      "name": "ST_BMW102_XDrive",
+      "components": {
+        "10": {
+          "type": "title",
+          "name": "xdTitle",
+          "properties": {
+            "Visible": { "value": 1, "type": "UInt" }
+          },
+          "rows": [
+            { "Text": { "value": "SID_XD_TITLE", "type": "StringId" } }
+          ]
+        },
+        "20": {
+          "type": "label",
+          "name": "xdStatus",
+          "properties": {
+            "Visible": { "value": 1, "type": "UInt" },
+            "Focusable": { "value": 0, "type": "UInt" }
+          },
+          "rows": [
+            { "Text": { "value": "SID_XD_READY", "type": "StringId" } }
+          ]
+        },
+        "30": {
+          "type": "button",
+          "name": "xdDisable",
+          "properties": {
+            "Visible": { "value": 1, "type": "UInt" },
+            "Focusable": { "value": 3, "type": "UInt" }
+          },
+          "rows": [
+            { "Text": { "value": "SID_XD_DISABLE", "type": "StringId" } }
+          ]
+        },
+        "31": {
+          "type": "button",
+          "name": "xdProbe",
+          "properties": {
+            "Visible": { "value": 1, "type": "UInt" },
+            "Focusable": { "value": 3, "type": "UInt" }
+          },
+          "rows": [
+            { "Text": { "value": "SID_XD_PROBE", "type": "StringId" } }
+          ]
+        },
+        "40": {
+          "type": "label",
+          "name": "xdResult",
+          "properties": {
+            "Visible": { "value": 1, "type": "UInt" },
+            "Focusable": { "value": 0, "type": "UInt" }
+          },
+          "rows": [
+            { "Text": { "value": "SID_XD_HINT", "type": "StringId" } }
+          ]
+        }
+      }
+    }
+  }
+}

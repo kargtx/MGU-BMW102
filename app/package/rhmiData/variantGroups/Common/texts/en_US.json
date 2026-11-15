@@ -1,0 +1,7 @@
+{
+  "SID_XD_TITLE": "xDrive Off",
+  "SID_XD_READY": "Ready. Press “Disable xDrive”.",
+  "SID_XD_DISABLE": "Disable xDrive",
+  "SID_XD_PROBE": "Check link",
+  "SID_XD_HINT": "G-chassis only. AWD returns after a car restart."
+}
