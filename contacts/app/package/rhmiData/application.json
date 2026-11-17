@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.3.0",
+  "application": {
+    "uuid": "72bbe55d-d74f-4a94-85b9-d5646513f11e",
+    "type": "OnlineApp",
+    "name": "bmw102_contacts",
+    "vendor": "owner",
+    "version": "0.1.0",
+    "defaultLanguage": "en_GB",
+    "uiDescriptions": [
+      {
+        "applicationFilePath": "./uiDescriptions/ID7/application.xml",
+        "uiDescriptionFilePath": "./uiDescriptions/ID7/uiDescription.json",
+        "hmi": [
+          "ID7"
+        ]
+      },
+      {
+        "applicationFilePath": "./uiDescriptions/ID8/application.xml",
+        "uiDescriptionFilePath": "./uiDescriptions/ID8/uiDescription.json",
+        "hmi": [
+          "ID8"
+        ]
+      }
+    ],
+    "stringBundleUuid": "bc728c24-2f49-448f-89df-e67baed28239",
+    "resourceBundleUuid": "90fefc8d-b2cf-4c5b-b1ae-0ef980782c2d",
+    "variantGroups": [
+      {
+        "stringsPath": "./variantGroups/Common/texts",
+        "resourcesPath": "./variantGroups/Common/images",
+        "hmi": [
+          "ID7",
+          "ID8"
+        ],
+        "brands": [
+          "BMW"
+        ]
+      }
+    ],
+    "entryPoints": [
+      {
+        "name": "bmw102_contacts",
+        "uuid": "0de019fa-6884-44bb-84cd-920c09d722f7",
+        "textId": "SID_BC_TITLE",
+        "icon": "bmw102_icon.png",
+        "insertionStateId": 20974,
+        "insertionFocusId": 2,
+        "insertionMode": "INSERT_BELOW",
+        "insertionOrder": 0,
+        "insertionPriority": 0,
+        "previewType": "NONE",
+        "bookmarkable": true,
+        "private": null,
+        "appearance": "DEFAULT",
+        "isGroupHeader": false,
+        "insertionGroup": 0
+      }
+    ]
+  }
+}

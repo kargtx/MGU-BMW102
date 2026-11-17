@@ -31,6 +31,19 @@
         "ID7",
         "ID8"
       ]
+    },
+    {
+      "id": "bmw102_contacts",
+      "kind": "app",
+      "path": "contacts/app",
+      "build": "unit",
+      "title": "BMW102 · Контакты",
+      "description": "Плитка в меню: контакты BMW102 — ремонт и обслуживание (+7 965 925 6666, @BMW102UFA) и техподдержка приложений (+7 937 641 9123, @KARGTX).",
+      "uninstallable": true,
+      "mguHmi": [
+        "ID7",
+        "ID8"
+      ]
     }
   ]
 }
