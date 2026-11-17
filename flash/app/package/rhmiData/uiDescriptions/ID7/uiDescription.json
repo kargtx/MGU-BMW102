@@ -1,0 +1,359 @@
+{
+  "schemaVersion": "1.3.0",
+  "containers": {
+    "1": {
+      "type": "state",
+      "name": "ST_OnlineApps_BMW102Flash",
+      "components": {
+        "10": {
+          "type": "title",
+          "name": "fTitle",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_TITLE",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "20": {
+          "type": "label",
+          "name": "fStatus",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 0,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_STATUS",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "21": {
+          "type": "label",
+          "name": "fChecks",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 0,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "30": {
+          "type": "button",
+          "name": "fStart",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_START",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "31": {
+          "type": "button",
+          "name": "fPattern",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "32": {
+          "type": "button",
+          "name": "fOpt1",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "33": {
+          "type": "button",
+          "name": "fOpt2",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "34": {
+          "type": "button",
+          "name": "fOpt3",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "35": {
+          "type": "button",
+          "name": "fOpt4",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "36": {
+          "type": "button",
+          "name": "fLearn",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "37": {
+          "type": "button",
+          "name": "fLever",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "38": {
+          "type": "button",
+          "name": "fLeverDrive",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "40": {
+          "type": "label",
+          "name": "fResult",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 0,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "41": {
+          "type": "button",
+          "name": "fShowRate",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_EMPTY",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "42": {
+          "type": "button",
+          "name": "fShow",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_SHOW",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "43": {
+          "type": "label",
+          "name": "fWarn",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 0,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_FL_WARN",
+                "type": "StringId"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

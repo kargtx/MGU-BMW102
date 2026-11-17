@@ -50,8 +50,21 @@
       "kind": "app",
       "path": "strobe/app",
       "build": "unit",
-      "title": "BMW102 · Стробоскопы",
+      "title": "BMW102 · Strobe",
       "description": "Плитка в меню: мигание дальним светом (полиция, стробоскоп, поочерёдно) и световое шоу через диагностику МГУ (TASU), без адаптера. Для safety car на треке; шоу — только на стоянке.",
+      "uninstallable": true,
+      "mguHmi": [
+        "ID7",
+        "ID8"
+      ]
+    },
+    {
+      "id": "bmw102_flash",
+      "kind": "app",
+      "path": "flash/app",
+      "build": "unit",
+      "title": "BMW102 · Flash",
+      "description": "Плитка в меню: стробоскоп дальним светом и световое шоу полностью как в прототипе (idrive7-apps, Ambient config → Strobe): полиция, запуск рычагом дальнего, обучение. Стартует с МГУ. Только частная территория.",
       "uninstallable": true,
       "mguHmi": [
         "ID7",

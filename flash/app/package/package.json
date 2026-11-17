@@ -1,0 +1,44 @@
+{
+  "name": "bmw102_flash",
+  "version": "0.1.0",
+  "description": "BMW102 Flash: стробоскоп дальним светом и световое шоу полностью как в прототипе (idrive7-apps, Ambient config → Strobe): запуск рычагом, полиция, обучение дальнего. Только частная территория.",
+  "private": false,
+  "main": "javascript/runner.js",
+  "oapAppSettings": {
+    "maxDiskUsage": 8388608,
+    "cpuLimit": 20,
+    "memoryThresholdKB": 65536,
+    "priority": "PRIO_MEDIUM",
+    "visibility": "FOREGROUND",
+    "latencyClass": "FOREGROUND",
+    "loggingId": "FLSH",
+    "userLoginRequired": false,
+    "backgroundPriority": 150,
+    "someipManifest": "manifest.json"
+  },
+  "files": [
+    "config",
+    "rhmiData",
+    "package.json",
+    "npm-shrinkwrap.json",
+    "permissions.json",
+    "javascript",
+    "manifest.json",
+    "CHANGELOG.md",
+    "LICENSES.txt"
+  ],
+  "dependencies": {
+    "oap-sdk": "24.10.2"
+  },
+  "engines": {
+    "node": ">=8.7.0"
+  },
+  "author": "owner",
+  "license": "GPL-3.0-or-later",
+  "mguLocalOnly": true,
+  "mguHmi": [
+    "ID7",
+    "ID8"
+  ],
+  "mguAppStartType": "autostart"
+}
