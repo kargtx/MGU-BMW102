@@ -9,7 +9,8 @@
  *   · цифровые выходы света BDC (2F 4501 / 2F E3B5, BDC_G05).
  * Защита — из оригинала: ≤30 с на нажатие, отдых после работы, ≤2 мин мигания за 10 мин, остановка при
  * перегреве фар (FLM01 ≥ 90 °C), фары возвращаются машине при остановке или падении приложения.
- * От BMW102: работа только при скорости ≤ 3 км/ч (src/speed.js), запуск — двойным нажатием.
+ * От BMW102 (для safety car на треке): стробоскоп работает и на ходу, но на LED-фарах на ходу — только дальний
+ * (ближний не гаснет); световое шоу и обучение — только на стоянке (≤ 3 км/ч, src/speed.js). Запуск — двойным нажатием.
  *
  * Одна страница:
  *   заголовок · статус · Старт/Стоп · Режим · Частота · Свет · Световое шоу · Обучить/Найти фары · результат.
@@ -50,10 +51,11 @@ const STR = {
     noLink: 'Нет диагностического канала МГУ (TASU).',
     finding: 'Ищу фары (только чтение)…',
     notFound: 'Управление фарами не найдено',
-    hint: 'Только частная территория и стоянка. ≤30 с за раз, затем отдых.',
-    confirmStart: 'Нажмите «Запустить стробоскоп» ещё раз в течение 6 с. Только на частной территории!',
-    confirmShow: 'Нажмите «Световое шоу» ещё раз в течение 6 с. Только на частной территории!',
+    hint: 'Для трека и частной территории. ≤30 с за раз, затем отдых.',
+    confirmStart: 'Нажмите «Запустить стробоскоп» ещё раз в течение 6 с. Только трек или частная территория!',
+    confirmShow: 'Нажмите «Световое шоу» ещё раз в течение 6 с. Только трек или частная территория!',
     moving: 'машина движется — только на стоянке (≤' + MAX_KMH + ' км/ч)',
+    movingAll: 'на ходу на LED-фарах только «Свет: только дальний» — иначе гаснет ближний',
     busy: 'Подождите: идёт другая операция',
     start: '▶  Запустить стробоскоп',
     stop: '■  Остановить',
@@ -156,11 +158,17 @@ class StrobeApp extends OnlineApp {
         return pkg && pkg.version;
     }
 
-    /* Можно ли работать сейчас: null — да, иначе почему нет. Проверяется перед каждой вспышкой. */
-    _allowed() {
+    /* Можно ли работать сейчас: null — да, иначе почему нет. Проверяется перед каждой вспышкой.
+     * what: 'strobe' | 'show' | 'learn'. Стробоскоп — и на ходу (safety car); на LED-фарах на ходу только дальний,
+     * потому что «все фонари» гасят между вспышками и ближний. Шоу (все LED против темноты) и обучение — на стоянке. */
+    _allowed(what) {
         if (this._shutdownPromise) return 'приложение закрывается';
-        if (this._speed.moving()) return STR.moving;
-        return null;
+        if (!this._speed.moving()) return null;
+        if (what === 'strobe') {
+            const lights = this._strobe.running === 'strobe' ? this._runLights : this._opts.lights;
+            return this._strobe.head && lights !== 'high' ? STR.movingAll : null;
+        }
+        return STR.moving;
     }
 
     _saveOpts() {
@@ -404,11 +412,11 @@ class StrobeApp extends OnlineApp {
         return false;
     }
 
-    _ready() {
+    _ready(what) {
         if (this._finding) { this._note = { ok: null, message: STR.finding }; this._render(); return false; }
         if (!this._tasu.p) { this._linkTasu().then(() => this._find()).catch(() => {}); return false; }
         if (!this._strobe.kind) { this._find(); return false; }
-        const why = this._allowed();
+        const why = this._allowed(what);
         if (why) { this._note = { ok: false, message: 'Нельзя: ' + why }; this._render(); return false; }
         return true;
     }
@@ -420,10 +428,11 @@ class StrobeApp extends OnlineApp {
             s.stop();
             return;
         }
-        if (!this._ready() || !this._confirmed('start', STR.confirmStart)) {
+        if (!this._ready('strobe') || !this._confirmed('start', STR.confirmStart)) {
             return;
         }
         const o = { pattern: this._opts.pattern, rate: this._opts.rate, lights: this._opts.lights };
+        this._runLights = o.lights;
         this._trace(`start ${JSON.stringify(o)}`);
         s.start(o).catch((e) => this._trace(`strobe: ${e && e.stack || e}`, 'warn')).then(() => this._render());
         this._render();
@@ -435,7 +444,7 @@ class StrobeApp extends OnlineApp {
             s.stop();
             return;
         }
-        if (!this._ready() || !this._confirmed('show', STR.confirmShow)) {
+        if (!this._ready('show') || !this._confirmed('show', STR.confirmShow)) {
             return;
         }
         this._trace('light show');
@@ -457,6 +466,12 @@ class StrobeApp extends OnlineApp {
         }
         if (!s.head) {
             this._find();
+            return;
+        }
+        const why = this._allowed('learn');
+        if (why) {
+            this._note = { ok: false, message: 'Нельзя: ' + why };
+            this._render();
             return;
         }
         s.learn().catch((e) => this._trace(`learn: ${e && e.stack || e}`, 'warn')).then(() => this._render());

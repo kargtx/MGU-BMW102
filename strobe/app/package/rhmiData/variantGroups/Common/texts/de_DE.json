@@ -7,5 +7,5 @@
   "SID_ST_LIGHTS": "Licht: alle",
   "SID_ST_SHOW": "✦  Lichtshow (15 s)",
   "SID_ST_LEARN": "Scheinwerfer neu suchen",
-  "SID_ST_HINT": "Nur Privatgelände und im Stand. ≤30 s pro Druck, dann Pause."
+  "SID_ST_HINT": "Rennstrecke und Privatgelände. ≤30 s pro Druck, dann Pause."
 }
