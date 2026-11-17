@@ -25,8 +25,8 @@ const CONTACTS = {
         detail: 'BMW102 — ремонт и обслуживание.  Тел.: +7 965 925 6666  ·  Telegram: @BMW102UFA'
     },
     support: {
-        button: 'Техподдержка приложений · +7 937 641 9123',
-        detail: 'KARGTX — техподдержка приложений МГУ.  Тел.: +7 937 641 9123  ·  Telegram: @KARGTX'
+        button: 'Техподдержка приложений · Telegram @KARGTX',
+        detail: 'KARGTX — техподдержка приложений МГУ.  Telegram: @KARGTX'
     }
 };
 

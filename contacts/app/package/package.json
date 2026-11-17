@@ -1,6 +1,6 @@
 {
   "name": "bmw102_contacts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "BMW102: плитка с контактами — ремонт и обслуживание, техподдержка приложений",
   "private": false,
   "main": "javascript/runner.js",
