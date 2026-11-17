@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "bmw102_strobe",
+  "version": "0.1.0",
+  "tree": "package",
+  "modules": [
+    "src/app.js",
+    "src/tasu.js",
+    "src/strobe.js",
+    "src/speed.js"
+  ],
+  "sdk": [
+    "oap-sdk/src/core/OnlineApp.js",
+    "oap-sdk/src/logging/logging"
+  ]
+}

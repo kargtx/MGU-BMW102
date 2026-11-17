@@ -1,0 +1,43 @@
+{
+  "name": "bmw102_strobe",
+  "version": "0.1.0",
+  "description": "BMW102: плитка «Стробоскопы» — мигание дальним светом и световое шоу через диагностику МГУ (TASU). Только частная территория и стоянка.",
+  "private": false,
+  "main": "javascript/runner.js",
+  "oapAppSettings": {
+    "maxDiskUsage": 8388608,
+    "cpuLimit": 20,
+    "memoryThresholdKB": 65536,
+    "priority": "PRIO_MEDIUM",
+    "visibility": "FOREGROUND",
+    "latencyClass": "FOREGROUND",
+    "loggingId": "STRB",
+    "userLoginRequired": false,
+    "backgroundPriority": 150,
+    "someipManifest": "manifest.json"
+  },
+  "files": [
+    "config",
+    "rhmiData",
+    "package.json",
+    "npm-shrinkwrap.json",
+    "permissions.json",
+    "javascript",
+    "manifest.json",
+    "CHANGELOG.md",
+    "LICENSES.txt"
+  ],
+  "dependencies": {
+    "oap-sdk": "24.10.2"
+  },
+  "engines": {
+    "node": ">=8.7.0"
+  },
+  "author": "owner",
+  "license": "GPL-3.0-or-later",
+  "mguLocalOnly": true,
+  "mguHmi": [
+    "ID7",
+    "ID8"
+  ]
+}
