@@ -177,6 +177,28 @@
             }
           ]
         },
+        "36": {
+          "type": "button",
+          "name": "stLever",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_ST_LEVER",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
         "40": {
           "type": "label",
           "name": "stResult",

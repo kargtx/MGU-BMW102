@@ -2,7 +2,7 @@
 /**
  * BMW102 · Flash — стробоскоп дальним светом и световое шоу. Экран и логика — страница Strobe приложения
  * Ambient config (cauliflowermossgrape/idrive7-apps 2.7.3, MIT), как есть: те же панели, кнопки, проверки и
- * запуск рычагом дальнего; тексты на русском, тема BMW102 (тёмно-синий фон, полосы голубой · синий · красный).
+ * запуск рычагом дальнего (5 нажатий за 10 с — старт, следующее нажатие — стоп); тексты на русском, тема BMW102 (тёмно-синий фон, полосы голубой · синий · красный).
  *
  * Слева — Стробоскоп: найденные фары, проверки (в машине кто-то есть; шоу — только стоя), запуск рычагом,
  * свет / полиция (серия, длина вспышки, порядок) / обучение дальнего, режим, вспышек в секунду или скорость,
@@ -93,8 +93,8 @@ async function background(bg) {
     const find = () => strobe.find().then((k) => { if (!k) again(); }, (e) => { log.warn('strobe: ' + e); again(); });
     find();
 
-    // рычаг дальнего (lever.js): короткий рывок на стоянке (на ходу — с настройкой strobeLeverDriving) запускает
-    // стробоскоп с настройками страницы, пока включён «Запуск рычагом»; ещё рывок во время мигания — останавливает
+    // рычаг дальнего (lever.js): 5 нажатий за 10 с на стоянке (на ходу — с настройкой strobeLeverDriving) запускают
+    // стробоскоп с настройками страницы, пока включён «Запуск рычагом»; следующее нажатие во время мигания — останавливает
     const lever = new Lever();
     let leverWatch = null;
     const watchLever = () => {
@@ -102,17 +102,19 @@ async function background(bg) {
         leverWatch = Promise.resolve(signals.watch('de.bmw.infotainment.vehicle.Vehicle2', '1', {
             statusLightStatus: (v) => {
                 const t = Date.now();
-                if (!lever.beam(beamOf(v && v.statusMainBeam_headlightFlasher), t)) return;
+                const got = lever.beam(beamOf(v && v.statusMainBeam_headlightFlasher), t);
+                if (!got) return;
                 if (strobe.running === 'strobe') {
                     lever.cool(t);
                     log.info('strobe: stopped with the flasher lever');
                     strobe.stop();
                     return;
                 }
+                if (got !== 'start') return;
                 const parkedOk = parked.moving() === false || settings.get('strobeLeverDriving') === true;
                 if (settings.get('strobeLever') !== true || !strobe.kind || strobe.running || gate('strobe') !== null || !parkedOk) return;
                 lever.cool(t);
-                log.info('strobe: started with the flasher lever');
+                log.info('strobe: started with the flasher lever (5 pulls in 10 s)');
                 strobe.start(strobeOptions(settings, strobe)).catch((e) => log.warn('strobe: ' + e));
             },
         }, log, { pollMs: 500 })).catch((e) => { leverWatch = null; log.warn('flasher lever: ' + (e && e.message || e)); });
@@ -147,11 +149,12 @@ mgu.run({
                 cv.text(label + (!ok && why ? ' · ' + why : ''), 70, y, 20, ok ? t.text : t.dim);
             });
             cv.text('Только для частной территории.', 44, 222, 20, t.warn, { font: 'bold' });
-            // короткий рывок рычага дальнего на стоянке запускает (lever.js), только пока это включено
+            // 5 нажатий рычага дальнего за 10 с запускают (lever.js), следующее — останавливает; только пока это включено
             const lever = settings.get('strobeLever') === true;
             G.button(cv, t, 520, 190, 220, 42, lever ? 'Рычаг: Вкл' : 'Рычаг: Выкл', () => { settings.set('strobeLever', !lever); return redraw(); },
                 { primary: lever, key: 'strobe-lever', busy: !strobe });
             if (strobe && strobe.note) cv.text(strobe.note, 44, 248, 18, strobe.noteType === 'warn' ? t.warn : t.dim);
+            else if (lever) cv.text('Рычаг дальнего: 5 нажатий за 10 с — старт, ещё нажатие — стоп', 44, 248, 18, t.dim);
             const pat = ['both', 'alternate', 'police'].indexOf(settings.get('strobePattern')) >= 0 ? settings.get('strobePattern') : 'police';
             const rate = settings.get('strobeRate') || 'normal';
             // блоки фар мигают всем передним светом; блок кузова — только дальним

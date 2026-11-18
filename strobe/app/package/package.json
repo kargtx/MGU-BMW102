@@ -1,6 +1,6 @@
 {
   "name": "bmw102_strobe",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "BMW102: плитка «Стробоскопы» — мигание дальним светом и световое шоу через диагностику МГУ (TASU). Только частная территория и стоянка.",
   "private": false,
   "main": "javascript/runner.js",
@@ -39,5 +39,6 @@
   "mguHmi": [
     "ID7",
     "ID8"
-  ]
+  ],
+  "mguAppStartType": "autostart"
 }

@@ -123,7 +123,8 @@
         "1"
       ],
       "attributes": {
-        "statusCarSpeed2": "rs"
+        "statusCarSpeed2": "rs",
+        "statusLightStatus": "rs"
       }
     }
   },

@@ -11,6 +11,8 @@
  * перегреве фар (FLM01 ≥ 90 °C), фары возвращаются машине при остановке или падении приложения.
  * От BMW102 (для safety car на треке): стробоскоп работает и на ходу, но на LED-фарах на ходу — только дальний
  * (ближний не гаснет); световое шоу и обучение — только на стоянке (≤ 3 км/ч, src/speed.js). Запуск — двойным нажатием.
+ * Рычаг дальнего (src/lever.js, «Рычаг: Вкл»): 5 нажатий за 10 с — запуск с настройками страницы, следующее — стоп.
+ * Приложение стартует вместе с МГУ, чтобы рычаг работал и с закрытой плиткой.
  *
  * Одна страница:
  *   заголовок · статус · Старт/Стоп · Режим · Частота · Свет · Световое шоу · Обучить/Найти фары · результат.
@@ -24,6 +26,7 @@ const logging = require('oap-sdk/src/logging/logging');
 const { Tasu } = require('./tasu.js');
 const { Strobe } = require('./strobe.js');
 const { Speed, MAX_KMH } = require('./speed.js');
+const { Lever } = require('./lever.js');
 
 const logger = logging.getSDKLogger();
 
@@ -39,7 +42,7 @@ const CHANNELS_FILE = path.join(DATA_DIR, 'strobe-channels.json');
 const STATE_NAME = 'ST_OnlineApps_BMW102Strobe';
 const C = {
     title: 'stTitle', status: 'stStatus', start: 'stStart', pattern: 'stPattern', rate: 'stRate',
-    lights: 'stLights', show: 'stShow', learn: 'stLearn', result: 'stResult'
+    lights: 'stLights', show: 'stShow', learn: 'stLearn', lever: 'stLever', result: 'stResult'
 };
 
 const PATTERNS = [['police', 'Полиция'], ['both', 'Стробоскоп (вместе)'], ['alternate', 'Поочерёдно (лево/право)']];
@@ -109,13 +112,16 @@ class StrobeApp extends OnlineApp {
         this._opts = {
             pattern: PATTERNS.some((p) => p[0] === s.pattern) ? s.pattern : 'police',
             rate: RATES.some((r) => r[0] === s.rate) ? s.rate : 'normal',
-            lights: LIGHTS.some((l) => l[0] === s.lights) ? s.lights : 'all'
+            lights: LIGHTS.some((l) => l[0] === s.lights) ? s.lights : 'all',
+            lever: s.lever === true
         };
 
         this._tasu = new Tasu((m) => this._trace(m));
         this._tasu.on('available', () => this._render());
         this._speed = new Speed((m) => this._trace(m));
         this._speed.on('change', () => this._render());
+        this._lever = new Lever();
+        this._speed.on('beam', (on, t) => this._onBeam(on, t));
         this._strobe = new Strobe({
             diag: this._tasu,
             log: { info: (m) => this._trace(m), warn: (m) => this._trace(m, 'warn') },
@@ -178,6 +184,7 @@ class StrobeApp extends OnlineApp {
     _appInitialized() {
         this._trace(`v${this._version()} starting, reason ${this.startReason}`);
         this._speed.start();
+        if (this._opts.lever) this._speed.watchBeam();
         this._linkTasu().then(() => this._find()).catch(() => {});
         if (!this.rhmiApplication) {
             this._trace('no RhmiApplication for this start reason; initializing without a screen');
@@ -230,6 +237,7 @@ class StrobeApp extends OnlineApp {
         this._bind(C.lights, () => this._doLights());
         this._bind(C.show, () => this._doShow());
         this._bind(C.learn, () => this._doLearn());
+        this._bind(C.lever, () => this._doLever());
         rhmi.on('userEvent', (ev) => {
             const entry = ev && ev.eventType === 'ACTION' && this._actionById[Number(ev.sourceId)];
             if (entry) {
@@ -477,6 +485,33 @@ class StrobeApp extends OnlineApp {
         s.learn().catch((e) => this._trace(`learn: ${e && e.stack || e}`, 'warn')).then(() => this._render());
     }
 
+    /* Рычаг дальнего: 5 нажатий за 10 с — старт с настройками страницы, следующее нажатие — стоп. */
+    _onBeam(on, t) {
+        const got = this._lever.beam(on, t);
+        if (!got || this._shutdownPromise) return;
+        const s = this._strobe;
+        if (s.running === 'strobe') {
+            this._lever.cool(t);
+            this._trace('strobe: stopped with the flasher lever');
+            s.stop();
+            return;
+        }
+        if (got !== 'start' || !this._opts.lever || !s.kind || s.running || this._allowed('strobe')) return;
+        this._lever.cool(t);
+        this._trace('strobe: started with the flasher lever (5 pulls in 10 s)');
+        const o = { pattern: this._opts.pattern, rate: this._opts.rate, lights: this._opts.lights };
+        this._runLights = o.lights;
+        s.start(o).catch((e) => this._trace(`strobe: ${e && e.stack || e}`, 'warn')).then(() => this._render());
+    }
+
+    _doLever() {
+        this._opts.lever = !this._opts.lever;
+        if (this._opts.lever) this._speed.watchBeam();
+        this._note = { ok: null, message: this._opts.lever ? 'Рычаг дальнего: 5 нажатий за 10 с — старт, ещё нажатие — стоп' : 'Запуск рычагом выключен' };
+        this._saveOpts();
+        this._render();
+    }
+
     _cycle(key, list, ok) {
         if (this._strobe.running) {
             this._note = { ok: null, message: 'Сначала остановите — настройки меняются между запусками' };
@@ -527,6 +562,7 @@ class StrobeApp extends OnlineApp {
         this._write(C.lights, 'Свет: ' + label(LIGHTS, this._opts.lights));
         this._write(C.show, s.running === 'show' ? STR.stop : STR.show);
         this._write(C.learn, s.running === 'learn' ? STR.learnStop : s.head ? STR.learn : STR.refind);
+        this._write(C.lever, 'Рычаг (5 нажатий за 10 с): ' + (this._opts.lever ? 'Вкл' : 'Выкл'));
         const n = this._note;
         const mark = n ? (n.ok === true ? '✓  ' : n.ok === false ? '✗  ' : '·  ') : '';
         this._write(C.result, n ? mark + n.message : STR.hint);

@@ -2,7 +2,7 @@
   "id": "bmw102_flash",
   "title": "BMW102 · Flash",
   "description": "Стробоскоп дальним светом и световое шоу как в Ambient config: полиция, запуск рычагом дальнего. Только частная территория.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "vendor": "custom",
   "loggingId": "FLSH",
   "iconGlyph": "ambient",
@@ -196,7 +196,7 @@
     },
     {
       "key": "strobeLever",
-      "label": "Запуск рычагом дальнего",
+      "label": "Запуск рычагом дальнего (5 нажатий за 10 с)",
       "type": "bool",
       "default": false,
       "hidden": true

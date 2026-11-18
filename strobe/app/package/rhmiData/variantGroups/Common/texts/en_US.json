@@ -7,5 +7,6 @@
   "SID_ST_LIGHTS": "Lights: all",
   "SID_ST_SHOW": "✦  Light show (15 s)",
   "SID_ST_LEARN": "Find headlights again",
-  "SID_ST_HINT": "Track and private property. ≤30 s per press, then rest."
+  "SID_ST_HINT": "Track and private property. ≤30 s per press, then rest.",
+  "SID_ST_LEVER": "Lever (5 pulls in 10 s): Off"
 }
