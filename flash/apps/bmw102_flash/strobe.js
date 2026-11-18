@@ -1,9 +1,10 @@
 'use strict';
 /*
- * BMW102 · Стробоскопы — движок мигания фарами.
+ * BMW102 · Flash — движок мигания фарами.
  * Перенесён из cauliflowermossgrape/idrive7-apps, apps/ambient_config/strobe.js (2.7.3), лицензия MIT,
- * Copyright (c) 2026 cauliflowermossgrape. Изменения BMW102: тексты на русском, транспорт TASU этого
- * репозитория (src/tasu.js) без журнала каждого кадра, проверка «можно ли» — в src/app.js.
+ * Copyright (c) 2026 cauliflowermossgrape. Изменения BMW102: тексты на русском; проверка «можно ли» — в main.js;
+ * стробоскоп без ограничения по времени (до Стоп, нажатия рычага или проверки), без паузы для отдыха фар и без
+ * лимита мигания за 10 мин; остановка по перегреву LED фар FLM01 (≥ 90 °C) оставлена.
  * Описание протокола ниже — оригинальное.
  */
 /**
@@ -95,7 +96,7 @@ const STA = 0x03, RCTECU = 0x00;
 const DISCO = [0x45, 0x30];
 // at least this long for half a flash (on, or off), by rate; the writes take what they take (~200 ms each)
 const HALF_MS = { fast: 0, normal: 200, slow: 500 };
-const MAX_MS = 30000;            // one press: at most this long
+const MAX_MS = Infinity;         // BMW102: без ограничения по времени — мигает, пока не остановят (Стоп, рычаг, проверки)
 const SHOW_MS = 15000;           // the light show's length
 const KEEP_MS = 2000;            // 3E 00 this often when nothing else is sent
 const LEARN_MS = 15000;          // how long learn() waits for the high beam
@@ -107,6 +108,7 @@ const REST_MS = 10000;
 // and over time: at most BUDGET_MS of flashing in any BUDGET_WINDOW_MS
 const BUDGET_MS = 120000;
 const BUDGET_WINDOW_MS = 600000;
+const NO_REST = true;            // BMW102: пауза для отдыха фар и лимит мигания за 10 мин сняты
 const HOT_FN_EVERY_MS = 10000;   // the headlights' temperatures while the body controller flashes (police)
 const HOT_C = 90;
 const HOT_EVERY_MS = 5000;
@@ -462,8 +464,9 @@ class Strobe extends EventEmitter {
         return (this.runs || []).reduce((n, r) => n + Math.max(0, r[1] - Math.max(r[0], from)), 0);
     }
 
-    /** Why the lights must rest, or null. */
+    /** Why the lights must rest, or null. BMW102: отдыха и лимита за 10 мин нет — всегда null. */
     _resting() {
+        if (NO_REST) return null;
         if (this.restUntil && this.now() < this.restUntil) return 'свет отдыхает ещё ' + Math.ceil((this.restUntil - this.now()) / 1000) + ' с';
         if (this._flashedLately() >= BUDGET_MS) {
             // the oldest run leaves the window when enough has gone by
