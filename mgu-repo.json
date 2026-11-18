@@ -61,10 +61,22 @@
     {
       "id": "bmw102_flash",
       "kind": "app",
-      "path": "flash/app",
-      "build": "unit",
+      "path": "flash/apps/bmw102_flash",
+      "build": {
+        "python": "flash/kit/tools/build.py",
+        "args": [
+          "--language",
+          "ru",
+          "{id}"
+        ],
+        "sdk": "flash/oap-sdk",
+        "output": "flash/dist/{id}@{version}.tgz",
+        "shared": [
+          "flash/kit"
+        ]
+      },
       "title": "BMW102 · Flash",
-      "description": "Плитка в меню: стробоскоп дальним светом и световое шоу полностью как в прототипе (idrive7-apps, Ambient config → Strobe): полиция, запуск рычагом дальнего, обучение. Стартует с МГУ. Только частная территория.",
+      "description": "Стробоскоп дальним светом и световое шоу — экран и логика как у страницы Strobe в Ambient config (idrive7-apps), в стиле BMW102: полиция, запуск рычагом дальнего, обучение. Нужны GPU renderer и Controller gate из idrive7-apps. Только частная территория.",
       "uninstallable": true,
       "mguHmi": [
         "ID7",

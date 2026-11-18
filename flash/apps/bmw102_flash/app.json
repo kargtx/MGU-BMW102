@@ -1,0 +1,256 @@
+{
+  "id": "bmw102_flash",
+  "title": "BMW102 · Flash",
+  "description": "Стробоскоп дальним светом и световое шоу как в Ambient config: полиция, запуск рычагом дальнего. Только частная территория.",
+  "version": "0.2.0",
+  "vendor": "custom",
+  "loggingId": "FLSH",
+  "iconGlyph": "ambient",
+  "mguHmi": [
+    "ID7",
+    "ID8"
+  ],
+  "requires": {
+    "idrive7-renderd": "2.1.18",
+    "mgu-inputgate": "1.1.0"
+  },
+  "autostart": true,
+  "signals": {
+    "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
+      "_instances": "SystemFunctionsInternalTasuInst1",
+      "_methods": [
+        "sendTasuRequest"
+      ],
+      "_broadcasts": [
+        "sendTasuResponse"
+      ]
+    },
+    "de.bmw.infrastructure.VehicleCondition": {
+      "_optional": "закрыли и ушли: остановка",
+      "VehicleCondition": "s",
+      "vehicleConditionNoCrc": "s"
+    },
+    "de.bmw.infotainment.vehicle.Vehicle2": {
+      "_optional": "скорость (шоу только стоя) и рычаг дальнего",
+      "statusCarSpeed2": "rs",
+      "statusLightStatus": "rs"
+    }
+  },
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "canvas",
+      "title": "BMW102 · Flash",
+      "buttons": [
+        [
+          "BTN_SETTINGS",
+          "Настройки"
+        ]
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "key": "strobeLeverDriving",
+      "label": "Запуск рычагом и на ходу (только частная территория)",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "key": "strobeLights",
+      "label": "Свет стробоскопа",
+      "type": "choice",
+      "default": "all",
+      "hidden": true,
+      "options": [
+        [
+          "all",
+          "Все фонари"
+        ],
+        [
+          "high",
+          "Дальний"
+        ]
+      ]
+    },
+    {
+      "key": "strobeEvery",
+      "label": "Вспышек в секунду",
+      "type": "choice",
+      "default": "0",
+      "hidden": true,
+      "options": [
+        [
+          "0",
+          "Макс"
+        ],
+        [
+          "250",
+          "4"
+        ],
+        [
+          "333",
+          "3"
+        ],
+        [
+          "500",
+          "2"
+        ],
+        [
+          "1000",
+          "1"
+        ]
+      ]
+    },
+    {
+      "key": "policeBurst",
+      "label": "Полиция: вспышек в серии",
+      "type": "choice",
+      "default": "4",
+      "hidden": true,
+      "options": [
+        [
+          "1",
+          "1"
+        ],
+        [
+          "2",
+          "2"
+        ],
+        [
+          "3",
+          "3"
+        ],
+        [
+          "4",
+          "4"
+        ]
+      ]
+    },
+    {
+      "key": "strobeFlashMs",
+      "label": "Длина вспышки",
+      "type": "choice",
+      "default": "80",
+      "hidden": true,
+      "options": [
+        [
+          "50",
+          "50 мс"
+        ],
+        [
+          "80",
+          "80 мс"
+        ],
+        [
+          "100",
+          "100 мс"
+        ],
+        [
+          "150",
+          "150 мс"
+        ]
+      ]
+    },
+    {
+      "key": "policeOrder",
+      "label": "Полиция: порядок",
+      "type": "choice",
+      "default": "lbr",
+      "hidden": true,
+      "options": [
+        [
+          "lbr",
+          "Л, оба, П"
+        ],
+        [
+          "lrb",
+          "Л, П, оба"
+        ],
+        [
+          "lr",
+          "Л, П"
+        ]
+      ]
+    },
+    {
+      "key": "strobePattern",
+      "label": "Режим стробоскопа",
+      "type": "choice",
+      "default": "police",
+      "hidden": true,
+      "options": [
+        [
+          "police",
+          "Полиция"
+        ],
+        [
+          "both",
+          "Стробоскоп"
+        ],
+        [
+          "alternate",
+          "Поочерёдно"
+        ]
+      ]
+    },
+    {
+      "key": "strobeLever",
+      "label": "Запуск рычагом дальнего",
+      "type": "bool",
+      "default": false,
+      "hidden": true
+    },
+    {
+      "key": "strobeRate",
+      "label": "Скорость стробоскопа",
+      "type": "choice",
+      "default": "normal",
+      "hidden": true,
+      "options": [
+        [
+          "fast",
+          "Быстро"
+        ],
+        [
+          "normal",
+          "Обычно"
+        ],
+        [
+          "slow",
+          "Медленно"
+        ]
+      ]
+    },
+    {
+      "key": "showRate",
+      "label": "Скорость шоу",
+      "type": "choice",
+      "default": "normal",
+      "hidden": true,
+      "options": [
+        [
+          "fast",
+          "Быстро"
+        ],
+        [
+          "normal",
+          "Обычно"
+        ]
+      ]
+    },
+    {
+      "key": "theme",
+      "label": "Тема",
+      "type": "choice",
+      "default": "bmw102",
+      "hidden": true,
+      "options": [
+        [
+          "bmw102",
+          "BMW102"
+        ]
+      ]
+    }
+  ]
+}
